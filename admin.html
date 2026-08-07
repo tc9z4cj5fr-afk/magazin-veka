@@ -1,0 +1,1167 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ЦУБ · Центр управления бизнесом</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #f5f6f7;
+    --surface: #ffffff;
+    --surface-2: #eef0f2;
+    --text: #14171c;
+    --muted: #5b6472;
+    --border: #dee2e6;
+    --accent: #2b3648;
+    --accent-strong: #171d28;
+    --accent-soft: #e9ebee;
+    --shadow: 0 1px 2px rgba(20, 23, 28, 0.05), 0 4px 16px rgba(20, 23, 28, 0.05);
+    --ok: #1f7a52;
+    --ok-bg: #e6f4ee;
+    --warn: #9a6a10;
+    --warn-bg: #f7f0dd;
+    --info: #2f5aa3;
+    --info-bg: #e9eefb;
+    --danger: #ac3038;
+    --danger-bg: #fbe9ea;
+    --radius-lg: 14px;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #101216;
+    --surface: #171a1f;
+    --surface-2: #1f232a;
+    --text: #edeff2;
+    --muted: #8b93a1;
+    --border: #2a2f37;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.35);
+    --accent: #c3cbdb;
+    --accent-strong: #eef1f7;
+    --accent-soft: #232833;
+    --ok-bg: #12301f;
+    --warn-bg: #332a10;
+    --info-bg: #16233c;
+    --danger-bg: #3a1a1d;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101216;
+      --surface: #171a1f;
+      --surface-2: #1f232a;
+      --text: #edeff2;
+      --muted: #8b93a1;
+      --border: #2a2f37;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.35);
+      --accent: #c3cbdb;
+      --accent-strong: #eef1f7;
+      --accent-soft: #232833;
+      --ok-bg: #12301f;
+      --warn-bg: #332a10;
+      --info-bg: #16233c;
+      --danger-bg: #3a1a1d;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root { min-height: 100%; display: flex; justify-content: center; }
+
+  .shell {
+    width: 100%;
+    max-width: 480px;
+    min-height: 100vh;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  @media (min-width: 600px) {
+    body { background: var(--surface-2); padding: 24px 0; }
+    .shell {
+      min-height: calc(100vh - 48px);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+  }
+
+  button, select, input, textarea { font-family: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .eyebrow {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ---------- Login ---------- */
+  .login {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    color: var(--text);
+    padding: 40px 24px 28px;
+  }
+  .login-head { margin-bottom: 30px; }
+  .login-head .mark {
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; margin-bottom: 16px; color: var(--text);
+  }
+  .login-head .mark svg { width: 44px; height: 44px; display: block; }
+  .login-head .eyebrow { display: block; margin-bottom: 8px; }
+  .login-head h1 { font-size: 21px; font-weight: 700; margin: 0 0 6px; text-wrap: balance; letter-spacing: -0.01em; }
+  .login-head p { margin: 0; font-size: 13px; color: var(--muted); }
+
+  .id-field {
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 14px;
+    background: var(--surface-2); margin-bottom: 16px;
+  }
+  .id-field label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+  .id-field input {
+    width: 100%; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+    border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px;
+  }
+  .id-field .hint { font-size: 11px; color: var(--muted); margin-top: 7px; }
+
+  /* ---------- Shell after login ---------- */
+  .topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 13px 16px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--surface); z-index: 5;
+  }
+  .topbar .avatar {
+    width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; color: var(--text); flex-shrink: 0;
+  }
+  .topbar .avatar svg { width: 16px; height: 16px; display: block; }
+  .topbar .who { flex: 1; min-width: 0; }
+  .topbar .who .name { font-size: 12.5px; font-weight: 700; }
+  .topbar .who .role { font-size: 11px; color: var(--muted); }
+  .topbar .switch-btn {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    border-radius: var(--radius-sm); padding: 7px 10px; font-size: 12px; cursor: pointer;
+  }
+  .topbar .switch-btn:hover { background: var(--surface-2); }
+
+  main { flex: 1; padding: 18px 16px; padding-bottom: 88px; overflow-y: auto; }
+  .screen-title { font-size: 17px; font-weight: 700; margin: 2px 0 4px; text-wrap: balance; letter-spacing: -0.01em; }
+  .screen-sub { font-size: 12px; color: var(--muted); margin: 0 0 16px; }
+  .screen-title + .screen-sub { margin-top: 0; }
+  .screen-title-row { margin-bottom: 16px; }
+
+  /* ---------- Bottom nav ---------- */
+  nav.tabbar {
+    position: sticky; bottom: 0; left: 0; right: 0;
+    display: flex; background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 0 4px calc(0px + env(safe-area-inset-bottom));
+    z-index: 5;
+  }
+  nav.tabbar button {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; border-top: 2px solid transparent; color: var(--muted); font-size: 11.5px; font-weight: 500;
+    padding: 13px 2px 11px; cursor: pointer; position: relative;
+  }
+  nav.tabbar button.active { color: var(--text); font-weight: 700; border-top-color: var(--accent); }
+
+  /* ---------- Cards / rows ---------- */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .row-list { display: flex; flex-direction: column; gap: 10px; }
+  .row-card {
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 12px;
+    display: flex; flex-direction: column; gap: 8px; background: var(--surface);
+  }
+  .row-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .row-top .id { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .row-top .date { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
+    padding: 4px 9px 4px 7px; border-radius: 999px; white-space: nowrap;
+  }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .pill.waiting { background: var(--warn-bg); color: var(--warn); }
+  .pill.waiting .dot { background: var(--warn); }
+  .pill.transit { background: var(--info-bg); color: var(--info); }
+  .pill.transit .dot { background: var(--info); }
+  .pill.delivered { background: var(--ok-bg); color: var(--ok); }
+  .pill.delivered .dot { background: var(--ok); }
+  .pill.cancelled { background: var(--danger-bg); color: var(--danger); }
+  .pill.cancelled .dot { background: var(--danger); }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .field label { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--muted); }
+  .field input, .field textarea, .field select {
+    border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px;
+    font-size: 13.5px; background: var(--surface); color: var(--text); font-family: inherit;
+  }
+  .field textarea { resize: vertical; }
+
+  .btn-primary {
+    width: 100%; border: 1px solid var(--accent); background: var(--accent); color: #fff; font-weight: 700;
+    font-size: 14px; padding: 13px; border-radius: var(--radius); cursor: pointer;
+  }
+  .btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .btn-primary:disabled { opacity: 0.5; cursor: default; }
+  .btn-secondary {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    font-weight: 600; font-size: 13px; padding: 10px 14px; border-radius: var(--radius); cursor: pointer;
+  }
+  .btn-secondary:hover { background: var(--surface-2); }
+  .act-btn {
+    font-size: 12px; font-weight: 600; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); padding: 6px 10px;
+    background: var(--surface); color: var(--text); cursor: pointer;
+    text-decoration: none; display: inline-flex; align-items: center;
+  }
+  .act-btn:hover { background: var(--surface-2); }
+  .act-btn.danger { color: var(--danger); }
+
+  .empty-state { text-align: center; padding: 52px 16px; color: var(--muted); border: 1px dashed var(--border); border-radius: var(--radius); }
+  .empty-state .eyebrow { display: block; margin-bottom: 6px; }
+  .empty-state p { font-size: 13px; margin: 0; }
+
+  /* ---------- Metrics ---------- */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .stat-card .val { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .stat-card .lbl { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* ---------- Аналитика ---------- */
+  .bars { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-row .lbl { width: 44px; font-size: 11px; color: var(--muted); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .bar-track { flex: 1; height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+  .bar-row .num { width: 88px; text-align: right; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+  .pnl-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .pnl-row:last-of-type { border-bottom: none; padding-bottom: 2px; }
+  .pnl-row .lbl { font-size: 12.5px; color: var(--muted); }
+  .pnl-row .num { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pnl-row.total .lbl { color: var(--text); font-weight: 700; }
+  .pnl-row.total .num { font-weight: 700; }
+  .pnl-row .num.danger, .unit-row .m.danger { color: var(--danger); }
+
+  .unit-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .unit-row:last-of-type { border-bottom: none; padding-bottom: 2px; }
+  .unit-row .n { font-size: 13px; font-weight: 600; }
+  .unit-row .s { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .unit-row .m { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+  .unit-row .m .sub { display: block; font-size: 10px; font-weight: 500; }
+
+  /* ---------- ЦУБ specifics ---------- */
+  .state-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 10px 0 14px; }
+  .state-line { font-size: 16px; font-weight: 700; }
+  .link-list { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .kv-row { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .kv-row:first-of-type { padding-top: 2px; }
+  .kv-row:last-of-type { border-bottom: none; padding-bottom: 2px; }
+  .kv-key {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.04em; color: var(--muted);
+  }
+  .kv-row input {
+    border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 11px;
+    font-size: 13px; background: var(--surface); color: var(--text); width: 100%;
+  }
+  .legend { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 8px 0 0; }
+  .legend code { font-family: var(--mono); font-size: 11px; color: var(--text); }
+  .hint-note { font-size: 11px; color: var(--muted); line-height: 1.5; margin: 12px 0 0; }
+  .task-text { font-size: 13px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+
+  .section-gap { margin-top: 24px; }
+  .toast {
+    position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%);
+    background: var(--accent-strong); color: var(--surface); font-size: 12.5px; font-weight: 600;
+    padding: 10px 16px; border-radius: var(--radius-sm); box-shadow: var(--shadow);
+    opacity: 0; pointer-events: none; transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 20; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .toast { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div id="root"><div class="shell" id="shell"></div></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var API_URL = "https://script.google.com/macros/s/AKfycbzAiadnfWpgsPt473mSYYGfiSJJq6cT6UusJfOjy7b7DgfZHyLTov_gVmrPGPMFKXOi/exec";
+  var SHEET_URL = "https://docs.google.com/spreadsheets/d/1HAjTRj7Do1uMiqgXp8ku5adz1vJzpxOoKjU5ZKUla0U/edit";
+  var DEFAULT_ADMIN = "224091557";
+
+  var MARK =
+    '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M4.5 7h15M4.5 12h15M4.5 17h15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' +
+    '<circle cx="9.5" cy="7" r="2.1" fill="var(--surface)" stroke="currentColor" stroke-width="1.5"/>' +
+    '<circle cx="15" cy="12" r="2.1" fill="var(--surface)" stroke="currentColor" stroke-width="1.5"/>' +
+    '<circle cx="8" cy="17" r="2.1" fill="var(--surface)" stroke="currentColor" stroke-width="1.5"/>' +
+    '</svg>';
+
+  var TABS = [
+    { id: "status", label: "Статус" },
+    { id: "analytics", label: "Аналитика" },
+    { id: "texts", label: "Тексты" },
+    { id: "products", label: "Товары" },
+    { id: "people", label: "Люди" },
+    { id: "zones", label: "Зоны" },
+    { id: "claude", label: "Claude" }
+  ];
+
+  var ROLES = [
+    { id: "owner", label: "Владелец" },
+    { id: "admin", label: "Администратор" },
+    { id: "kladovshchik", label: "Кладовщик" },
+    { id: "prodavec", label: "Продавец" },
+    { id: "dostavshchik", label: "Доставщик" },
+    { id: "client", label: "Клиент" }
+  ];
+
+  var tg = (typeof window.Telegram !== "undefined" && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+  if (tg) { try { tg.ready(); tg.expand(); } catch (e) {} }
+
+  var state = {
+    cubId: localStorage.getItem("cub_id") || "",
+    role: localStorage.getItem("cub_role") || "owner",
+    tab: "status",
+    texts: {}
+  };
+  if (state.role === "buh") state.tab = "analytics";
+
+  // ---------------- API ----------------
+  function apiPost(action, payload) {
+    var body = payload || {};
+    body.s = "9f84d4915e7ff316c335e30370bfc2eb";
+    return fetch(API_URL + "?action=" + encodeURIComponent(action), {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); });
+  }
+  function assertOk(res) {
+    if (res && res.success === false) throw new Error(res.error || "Ошибка сервера");
+    return res;
+  }
+
+  // ---------------- helpers ----------------
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function errMsg(e) {
+    return (e && e.message) ? e.message : "Ошибка запроса";
+  }
+  function money(n) {
+    return (Number(n) || 0).toLocaleString("ru-RU") + " ₽";
+  }
+  function num(v) {
+    var n = parseFloat(v);
+    return isFinite(n) ? n : 0;
+  }
+  function fmtDate(v) {
+    if (!v) return "";
+    var d = new Date(v);
+    if (isNaN(d.getTime())) return String(v);
+    return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" });
+  }
+  var toastTimer = null;
+  function toast(msg) {
+    var el = document.getElementById("toast");
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove("show"); }, 2600);
+  }
+  function loadingHTML(label) {
+    return '<div class="empty-state"><span class="eyebrow">' + esc(label || "Загрузка") + '</span><p>Загрузка…</p></div>';
+  }
+  function errorHTML(msg) {
+    return '<div class="empty-state"><span class="eyebrow">Ошибка</span><p>' + esc(msg) + '</p></div>';
+  }
+  function fieldHTML(label, inner) {
+    return '<div class="field"><label>' + label + '</label>' + inner + '</div>';
+  }
+  function inputHTML(f, value, attrs) {
+    return '<input data-f="' + f + '" value="' + esc(value == null ? "" : value) + '" ' + (attrs || "") + ' />';
+  }
+  function roleSelectHTML(f, current) {
+    return '<select data-f="' + f + '">' +
+      ROLES.map(function (r) {
+        return '<option value="' + r.id + '"' + (r.id === current ? " selected" : "") + '>' + r.label + '</option>';
+      }).join("") +
+      '</select>';
+  }
+
+  // ---------------- rendering ----------------
+  var shell = document.getElementById("shell");
+
+  function render() {
+    if (!state.cubId) renderLogin();
+    else renderApp();
+  }
+
+  function renderLogin() {
+    shell.innerHTML =
+      '<div class="login">' +
+        '<div class="login-head">' +
+          '<span class="eyebrow">Центр управления бизнесом</span>' +
+          '<div class="mark">' + MARK + '</div>' +
+          '<h1>ЦУБ</h1>' +
+          '<p>Личный пульт владельца «Магазина Века»</p>' +
+        '</div>' +
+        '<div class="id-field">' +
+          '<label>Telegram ID</label>' +
+          '<input id="cub-login-id" type="text" inputmode="numeric" placeholder="Например, 224091557" />' +
+          '<div class="hint" id="cub-login-hint">Доступ только для владельца.</div>' +
+        '</div>' +
+        '<button class="btn-primary" id="cub-login-btn">Войти</button>' +
+      '</div>' +
+      '<div class="toast" id="toast"></div>';
+
+    var input = document.getElementById("cub-login-id");
+    var btn = document.getElementById("cub-login-btn");
+    var hint = document.getElementById("cub-login-hint");
+
+    function doLogin() {
+      var id = input.value.trim();
+      if (!id) { toast("Укажите Telegram ID"); return; }
+      btn.disabled = true;
+      btn.textContent = "Проверяем…";
+      apiPost("getTexts")
+        .then(assertOk)
+        .then(function (res) {
+          state.texts = (res && res.texts) || {};
+          var raw = String(state.texts.cub_admins || "");
+          var admins = raw.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+          if (!admins.length) admins = [DEFAULT_ADMIN];
+          var buh = String(state.texts.cub_buh || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+          var role = admins.indexOf(id) !== -1 ? "owner" : (buh.indexOf(id) !== -1 ? "buh" : "");
+          if (!role) {
+            btn.disabled = false;
+            btn.textContent = "Войти";
+            hint.textContent = "Доступа нет.";
+            toast("Доступа нет");
+            return;
+          }
+          state.cubId = id;
+          state.role = role;
+          state.tab = role === "buh" ? "analytics" : "status";
+          localStorage.setItem("cub_id", id);
+          localStorage.setItem("cub_role", role);
+          render();
+        })
+        .catch(function (e) {
+          btn.disabled = false;
+          btn.textContent = "Войти";
+          toast(errMsg(e));
+        });
+    }
+
+    btn.addEventListener("click", doLogin);
+    input.addEventListener("keydown", function (ev) { if (ev.key === "Enter") doLogin(); });
+  }
+
+  function renderApp() {
+    var isBuh = state.role === "buh";
+    var tabs = isBuh ? TABS.filter(function (t) { return t.id === "analytics"; }) : TABS;
+    if (!tabs.some(function (t) { return t.id === state.tab; })) state.tab = tabs[0].id;
+    shell.innerHTML =
+      '<div class="topbar">' +
+        '<div class="avatar">' + MARK + '</div>' +
+        '<div class="who"><div class="name">ЦУБ</div><div class="role">' + (isBuh ? "Бухгалтер" : "Владелец") + '</div></div>' +
+        '<button class="switch-btn" id="cub-logout">Выйти</button>' +
+      '</div>' +
+      '<main id="main"></main>' +
+      '<nav class="tabbar">' +
+        tabs.map(function (t) {
+          return '<button data-tab="' + t.id + '" class="' + (t.id === state.tab ? "active" : "") + '"><span>' + t.label + '</span></button>';
+        }).join("") +
+      '</nav>' +
+      '<div class="toast" id="toast"></div>';
+
+    document.getElementById("cub-logout").addEventListener("click", function () {
+      localStorage.removeItem("cub_id");
+      localStorage.removeItem("cub_role");
+      state.cubId = "";
+      state.role = "owner";
+      state.tab = "status";
+      render();
+    });
+    shell.querySelectorAll("[data-tab]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.tab = btn.getAttribute("data-tab");
+        renderApp();
+      });
+    });
+
+    renderTab();
+  }
+
+  function renderTab() {
+    var main = document.getElementById("main");
+    if (!main) return;
+    main.innerHTML = loadingHTML();
+    if (state.tab === "status") return renderStatus(main);
+    if (state.tab === "analytics") return renderAnalytics(main);
+    if (state.tab === "texts") return renderTexts(main);
+    if (state.tab === "products") return renderProducts(main);
+    if (state.tab === "people") return renderPeople(main);
+    if (state.tab === "zones") return renderZones(main);
+    if (state.tab === "claude") return renderClaude(main);
+  }
+
+  // ---------------- Статус ----------------
+  function renderStatus(main) {
+    Promise.all([
+      apiPost("getTexts").then(assertOk),
+      apiPost("getMetrics", {}).then(assertOk).catch(function (e) { return { __err: errMsg(e) }; })
+    ]).then(function (rs) {
+      if (state.tab !== "status") return;
+      state.texts = (rs[0] && rs[0].texts) || {};
+      var m = rs[1] && rs[1].metrics ? rs[1].metrics : null;
+      var mErr = rs[1] && rs[1].__err;
+      var locked = String(state.texts.site_locked || "") === "1";
+
+      main.innerHTML =
+        '<div class="screen-title-row"><div class="screen-title">Статус</div>' +
+        '<div class="screen-sub">Состояние магазина и ключевые показатели</div></div>' +
+
+        '<div class="card">' +
+          '<span class="eyebrow">Состояние магазина</span>' +
+          '<div class="state-row">' +
+            '<span class="state-line">' + (locked ? "Магазин закрыт" : "Магазин открыт") + '</span>' +
+            (locked
+              ? '<span class="pill cancelled"><span class="dot"></span>Закрыт</span>'
+              : '<span class="pill delivered"><span class="dot"></span>Открыт</span>') +
+          '</div>' +
+          (locked
+            ? fieldHTML("Текст заглушки (lock_message)",
+                '<input id="lock-message" value="' + esc(state.texts.lock_message || "") + '" placeholder="Магазин временно закрыт" />') +
+              '<button class="btn-primary" id="lock-toggle" style="background:var(--ok);border-color:var(--ok);">Открыть магазин</button>'
+            : '<button class="btn-primary" id="lock-toggle" style="background:var(--danger);border-color:var(--danger);">Заблокировать магазин</button>') +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">Метрики</span>' +
+          (m
+            ? '<div class="stat-grid" style="margin-top:12px;">' +
+                '<div class="stat-card"><div class="val">' + esc(m.totalOrders != null ? m.totalOrders : "—") + '</div><div class="lbl">Заказы</div></div>' +
+                '<div class="stat-card"><div class="val">' + esc(m.completedOrders != null ? m.completedOrders : "—") + '</div><div class="lbl">Выполнено</div></div>' +
+                '<div class="stat-card"><div class="val">' + (m.totalRevenue != null ? money(m.totalRevenue) : "—") + '</div><div class="lbl">Выручка</div></div>' +
+                '<div class="stat-card"><div class="val">' + esc(m.conversionRate != null ? m.conversionRate : "—") + '</div><div class="lbl">Конверсия</div></div>' +
+              '</div>'
+            : '<p class="hint-note">Метрики недоступны: ' + esc(mErr || "нет данных") + '</p>') +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">Ссылки</span>' +
+          '<div class="link-list">' +
+            '<a class="act-btn" href="index.html">Магазин</a>' +
+            '<a class="act-btn" href="demo.html">Демо</a>' +
+            '<a class="act-btn" href="' + SHEET_URL + '" target="_blank" rel="noopener">Google Таблица</a>' +
+          '</div>' +
+        '</div>';
+
+      if (mErr) toast(mErr);
+
+      var toggle = document.getElementById("lock-toggle");
+      toggle.addEventListener("click", function () {
+        toggle.disabled = true;
+        apiPost("setText", { key: "site_locked", value: locked ? "0" : "1" })
+          .then(assertOk)
+          .then(function () {
+            toast(locked ? "Магазин открыт" : "Магазин заблокирован");
+            renderTab();
+          })
+          .catch(function (e) { toast(errMsg(e)); toggle.disabled = false; });
+      });
+
+      var lockMsg = document.getElementById("lock-message");
+      if (lockMsg) {
+        lockMsg.addEventListener("change", function () {
+          apiPost("setText", { key: "lock_message", value: lockMsg.value })
+            .then(assertOk)
+            .then(function () { toast("Текст заглушки сохранён"); })
+            .catch(function (e) { toast(errMsg(e)); });
+        });
+      }
+    }).catch(function (e) {
+      if (state.tab !== "status") return;
+      main.innerHTML = errorHTML(errMsg(e));
+      toast(errMsg(e));
+    });
+  }
+
+  // ---------------- Аналитика ----------------
+  var EXPENSE_CATS = ["Закупка камней", "Реклама", "Аренда", "Зарплата", "Прочее"];
+
+  function pnlRow(label, value, opts) {
+    opts = opts || {};
+    return '<div class="pnl-row' + (opts.total ? " total" : "") + '">' +
+      '<span class="lbl">' + label + '</span>' +
+      '<span class="num' + (opts.danger ? " danger" : "") + '">' + value + '</span>' +
+    '</div>';
+  }
+
+  function renderAnalytics(main) {
+    apiPost("getAnalytics", {}).then(assertOk).then(function (res) {
+      if (state.tab !== "analytics") return;
+      var a = (res && res.analytics) || {};
+      var p = a.panel || {};
+      var pnl = a.pnl || {};
+      var dds = Array.isArray(a.dds) ? a.dds : [];
+      var units = Array.isArray(a.units) ? a.units : [];
+      var cats = Array.isArray(a.expensesByCat) ? a.expensesByCat : [];
+      var maxIn = dds.reduce(function (mx, d) { return Math.max(mx, Number(d.inflow) || 0); }, 0);
+      var debt = Number(p.debtTotal) || 0;
+      var net = Number(pnl.netProfit) || 0;
+
+      main.innerHTML =
+        '<div class="screen-title-row"><div class="screen-title">Аналитика</div>' +
+        '<div class="screen-sub">Финансы магазина за месяц</div></div>' +
+
+        '<div class="stat-grid">' +
+          '<div class="stat-card"><div class="val">' + money(p.revenueMonth) + '</div><div class="lbl">Выручка за месяц</div></div>' +
+          '<div class="stat-card"><div class="val">' + esc(p.ordersMonth != null ? p.ordersMonth : 0) + '</div><div class="lbl">Заказы</div></div>' +
+          '<div class="stat-card"><div class="val">' + money(p.avgCheck) + '</div><div class="lbl">Средний чек</div></div>' +
+          '<div class="stat-card"><div class="val"' + (debt > 0 ? ' style="color:var(--danger);"' : '') + '>' + money(debt) + '</div><div class="lbl">Должники</div></div>' +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">P&amp;L за месяц</span>' +
+          '<div style="margin-top:8px;">' +
+            pnlRow("Выручка", money(pnl.revenue)) +
+            pnlRow("− Себестоимость", money(pnl.cogs)) +
+            pnlRow("= Валовая прибыль", money(pnl.grossProfit), { total: true }) +
+            pnlRow("− Расходы", money(pnl.expenses)) +
+            pnlRow("− Курьерские", money(pnl.courierFees)) +
+            pnlRow("= Чистая прибыль", money(net), { total: true, danger: net < 0 }) +
+            pnlRow("Маржа", (Number(pnl.marginPct) || 0).toLocaleString("ru-RU") + " %") +
+          '</div>' +
+          '<p class="hint-note">Себестоимость берётся из колонки Себестоимость_за_грамм листа Товары — заполните её для точного расчёта.</p>' +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">ДДС · поступления 30 дней</span>' +
+          (dds.length
+            ? '<div class="bars">' +
+                dds.map(function (d) {
+                  var v = Number(d.inflow) || 0;
+                  var pct = maxIn > 0 ? Math.round(v / maxIn * 100) : 0;
+                  return '<div class="bar-row"><span class="lbl">' + esc(d.day) + '</span>' +
+                    '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>' +
+                    '<span class="num">' + money(v) + '</span></div>';
+                }).join("") +
+              '</div>'
+            : '<div class="empty-state" style="margin-top:12px;"><span class="eyebrow">Пусто</span><p>Поступлений за 30 дней нет</p></div>') +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">Юнит-экономика</span>' +
+          (units.length
+            ? '<div style="margin-top:4px;">' +
+                units.map(function (u) {
+                  var mpg = Number(u.marginPerGram) || 0;
+                  return '<div class="unit-row">' +
+                    '<div style="min-width:0;"><div class="n">' + esc(u.name) + '</div>' +
+                    '<div class="s">' + (Number(u.grams) || 0).toLocaleString("ru-RU") + ' г · ' + money(u.revenue) + '</div></div>' +
+                    '<div class="m' + (mpg === 0 ? " danger" : "") + '">' + money(mpg) + '/г' +
+                      (mpg === 0 ? '<span class="sub">нет себестоимости</span>' : '') +
+                    '</div>' +
+                  '</div>';
+                }).join("") +
+              '</div>'
+            : '<div class="empty-state" style="margin-top:12px;"><span class="eyebrow">Пусто</span><p>Продаж за месяц нет</p></div>') +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">Расходы за месяц</span>' +
+          (cats.length
+            ? '<div style="margin-top:4px;">' +
+                cats.map(function (c) {
+                  return '<div class="pnl-row"><span class="lbl">' + esc(c.cat) + '</span>' +
+                    '<span class="num">' + money(c.amount) + '</span></div>';
+                }).join("") +
+              '</div>'
+            : '<p class="hint-note">Расходов в этом месяце нет</p>') +
+          '<div style="margin-top:16px;">' +
+            fieldHTML("Категория", '<select id="exp-cat">' +
+              EXPENSE_CATS.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join("") +
+            '</select>') +
+            fieldHTML("Сумма, ₽", '<input id="exp-amount" type="number" step="any" inputmode="decimal" />') +
+            fieldHTML("Комментарий", '<input id="exp-note" placeholder="Необязательно" />') +
+            '<button class="btn-primary" id="exp-add">Добавить расход</button>' +
+          '</div>' +
+        '</div>';
+
+      document.getElementById("exp-add").addEventListener("click", function () {
+        var amount = num(document.getElementById("exp-amount").value);
+        if (amount <= 0) { toast("Укажите сумму"); return; }
+        var btn = document.getElementById("exp-add");
+        btn.disabled = true;
+        apiPost("addExpense", {
+          category: document.getElementById("exp-cat").value,
+          amount: amount,
+          note: document.getElementById("exp-note").value.trim()
+        })
+          .then(assertOk)
+          .then(function () { toast("Расход добавлен"); renderTab(); })
+          .catch(function (e) { toast(errMsg(e)); btn.disabled = false; });
+      });
+    }).catch(function (e) {
+      if (state.tab !== "analytics") return;
+      main.innerHTML = errorHTML(errMsg(e));
+      toast(errMsg(e));
+    });
+  }
+
+  // ---------------- Тексты ----------------
+  function renderTexts(main) {
+    apiPost("getTexts").then(assertOk).then(function (res) {
+      if (state.tab !== "texts") return;
+      state.texts = (res && res.texts) || {};
+      var keys = Object.keys(state.texts).filter(function (k) { return k !== "site_locked"; }).sort();
+
+      main.innerHTML =
+        '<div class="screen-title-row"><div class="screen-title">Тексты</div>' +
+        '<div class="screen-sub">Все настраиваемые строки магазина</div></div>' +
+
+        '<div class="card">' +
+          '<span class="eyebrow">Легенда</span>' +
+          '<p class="legend">' +
+            '<code>app_name</code> — название, <code>app_tagline</code> — подзаголовок, ' +
+            '<code>login_subtitle</code> — текст на экране входа, <code>logo_image</code> — URL логотипа, ' +
+            '<code>icon_*</code> — URL иконок ролей, <code>lock_message</code> — текст заглушки при блокировке, ' +
+            '<code>cub_admins</code> — ID админов ЦУБ через запятую, ' +
+            '<code>cub_buh</code> — ID бухгалтеров через запятую (доступ только к Аналитике).' +
+          '</p>' +
+        '</div>' +
+
+        '<div class="card section-gap" id="texts-list">' +
+          (keys.length
+            ? keys.map(function (k) {
+                return '<div class="kv-row">' +
+                  '<div class="kv-key">' + esc(k) + '</div>' +
+                  '<input data-key="' + esc(k) + '" value="' + esc(state.texts[k]) + '" />' +
+                '</div>';
+              }).join("")
+            : '<p class="hint-note" style="margin:0;">Ключей пока нет — добавьте первый ниже.</p>') +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">Новый ключ</span>' +
+          '<div style="margin-top:12px;">' +
+            fieldHTML("Ключ", '<input id="new-key" placeholder="например, promo_banner" />') +
+            fieldHTML("Значение", '<input id="new-value" placeholder="Текст или URL" />') +
+            '<button class="btn-secondary" id="add-key" style="width:100%;">Добавить ключ</button>' +
+          '</div>' +
+        '</div>';
+
+      main.querySelectorAll("#texts-list input[data-key]").forEach(function (inp) {
+        inp.addEventListener("change", function () {
+          var key = inp.getAttribute("data-key");
+          apiPost("setText", { key: key, value: inp.value })
+            .then(assertOk)
+            .then(function () { toast("Сохранено: " + key); })
+            .catch(function (e) { toast(errMsg(e)); });
+        });
+      });
+
+      document.getElementById("add-key").addEventListener("click", function () {
+        var key = document.getElementById("new-key").value.trim();
+        var value = document.getElementById("new-value").value;
+        if (!key) { toast("Укажите ключ"); return; }
+        var btn = document.getElementById("add-key");
+        btn.disabled = true;
+        apiPost("setText", { key: key, value: value })
+          .then(assertOk)
+          .then(function () { toast("Ключ добавлен: " + key); renderTab(); })
+          .catch(function (e) { toast(errMsg(e)); btn.disabled = false; });
+      });
+    }).catch(function (e) {
+      if (state.tab !== "texts") return;
+      main.innerHTML = errorHTML(errMsg(e));
+      toast(errMsg(e));
+    });
+  }
+
+  // ---------------- Товары ----------------
+  function renderProducts(main) {
+    apiPost("getTovary", {}).then(assertOk).then(function (res) {
+      if (state.tab !== "products") return;
+      var list = (res && res.data) || [];
+
+      main.innerHTML =
+        '<div class="screen-title-row"><div class="screen-title">Товары</div>' +
+        '<div class="screen-sub">' + list.length + ' позиций · сохранение при изменении поля</div></div>' +
+
+        '<div class="row-list">' +
+          (list.length
+            ? list.map(function (p) {
+                return '<div class="row-card" data-id="' + esc(p.id) + '">' +
+                  '<div class="row-top"><span class="kv-key">ID ' + esc(p.id) + '</span></div>' +
+                  fieldHTML("Название", inputHTML("name", p.name)) +
+                  '<div class="grid-2">' +
+                    fieldHTML("Цена, ₽/г", inputHTML("price", p.price, 'type="number" step="any" inputmode="decimal"')) +
+                    fieldHTML("Остаток, г", inputHTML("ostatok", p.ostatok, 'type="number" step="any" inputmode="decimal"')) +
+                  '</div>' +
+                  fieldHTML("Фото (URL)", inputHTML("image", p.image, 'placeholder="https://…"')) +
+                '</div>';
+              }).join("")
+            : '<div class="empty-state"><span class="eyebrow">Пусто</span><p>Камни ещё не добавлены</p></div>') +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">Приход камня</span>' +
+          '<p class="hint-note" style="margin-top:6px;">Себестоимость считается автоматически из приходов и видна в листе Товары</p>' +
+          '<div style="margin-top:12px;" id="receipt-form">' +
+            fieldHTML("Товар", '<select data-f="tovarId">' +
+              list.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join("") +
+            '</select>') +
+            '<div class="grid-2">' +
+              fieldHTML("Граммы", '<input data-f="grams" type="number" step="0.05" inputmode="decimal" />') +
+              fieldHTML("Цена закупа, ₽/г", '<input data-f="costPerGram" type="number" step="any" inputmode="decimal" />') +
+            '</div>' +
+            fieldHTML("Поставщик", '<input data-f="supplier" placeholder="Например, GemSource" />') +
+            fieldHTML("Комментарий", '<input data-f="note" placeholder="Необязательно" />') +
+            '<button class="btn-primary" id="add-receipt">Провести приход</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">Новый камень</span>' +
+          '<div style="margin-top:12px;" id="new-product">' +
+            fieldHTML("Название", '<input data-f="name" placeholder="Например, Сапфир" />') +
+            '<div class="grid-2">' +
+              fieldHTML("Цена, ₽/г", '<input data-f="price" type="number" step="any" inputmode="decimal" />') +
+              fieldHTML("Остаток, г", '<input data-f="ostatok" type="number" step="any" inputmode="decimal" />') +
+            '</div>' +
+            fieldHTML("Фото (URL)", '<input data-f="image" placeholder="https://…" />') +
+            '<button class="btn-primary" id="add-product">Добавить камень</button>' +
+          '</div>' +
+        '</div>';
+
+      main.querySelectorAll(".row-card[data-id]").forEach(function (card) {
+        card.querySelectorAll("input[data-f]").forEach(function (inp) {
+          inp.addEventListener("change", function () {
+            var payload = {
+              id: card.getAttribute("data-id"),
+              name: card.querySelector('[data-f="name"]').value,
+              price: num(card.querySelector('[data-f="price"]').value),
+              ostatok: num(card.querySelector('[data-f="ostatok"]').value),
+              image: card.querySelector('[data-f="image"]').value
+            };
+            apiPost("upsertProduct", payload)
+              .then(assertOk)
+              .then(function () { toast("Сохранено: " + (payload.name || "товар")); })
+              .catch(function (e) { toast(errMsg(e)); });
+          });
+        });
+      });
+
+      document.getElementById("add-receipt").addEventListener("click", function () {
+        var form = document.getElementById("receipt-form");
+        var payload = {
+          tovarId: form.querySelector('[data-f="tovarId"]').value,
+          grams: num(form.querySelector('[data-f="grams"]').value),
+          costPerGram: num(form.querySelector('[data-f="costPerGram"]').value),
+          supplier: form.querySelector('[data-f="supplier"]').value.trim(),
+          note: form.querySelector('[data-f="note"]').value.trim()
+        };
+        if (!payload.tovarId) { toast("Выберите товар"); return; }
+        if (!(payload.grams > 0)) { toast("Укажите граммы прихода"); return; }
+        if (!(payload.costPerGram > 0)) { toast("Укажите цену закупа"); return; }
+        var btn = document.getElementById("add-receipt");
+        btn.disabled = true;
+        apiPost("addReceipt", payload)
+          .then(assertOk)
+          .then(function (res) {
+            toast("Приход: остаток " + res.newStock + " г, себестоимость " + res.avgCostPerGram + " ₽/г");
+            renderTab();
+          })
+          .catch(function (e) { toast(errMsg(e)); btn.disabled = false; });
+      });
+
+      document.getElementById("add-product").addEventListener("click", function () {
+        var form = document.getElementById("new-product");
+        var payload = {
+          name: form.querySelector('[data-f="name"]').value.trim(),
+          price: num(form.querySelector('[data-f="price"]').value),
+          ostatok: num(form.querySelector('[data-f="ostatok"]').value),
+          image: form.querySelector('[data-f="image"]').value.trim()
+        };
+        if (!payload.name) { toast("Укажите название"); return; }
+        var btn = document.getElementById("add-product");
+        btn.disabled = true;
+        apiPost("upsertProduct", payload)
+          .then(assertOk)
+          .then(function () { toast("Камень добавлен"); renderTab(); })
+          .catch(function (e) { toast(errMsg(e)); btn.disabled = false; });
+      });
+    }).catch(function (e) {
+      if (state.tab !== "products") return;
+      main.innerHTML = errorHTML(errMsg(e));
+      toast(errMsg(e));
+    });
+  }
+
+  // ---------------- Люди ----------------
+  function renderPeople(main) {
+    apiPost("getUsers", {}).then(assertOk).then(function (res) {
+      if (state.tab !== "people") return;
+      var users = (res && res.users) || [];
+
+      main.innerHTML =
+        '<div class="screen-title-row"><div class="screen-title">Люди</div>' +
+        '<div class="screen-sub">' + users.length + ' пользователей · роль меняется сразу</div></div>' +
+
+        '<div class="row-list">' +
+          (users.length
+            ? users.map(function (u) {
+                return '<div class="row-card" data-tgid="' + esc(u.telegramId) + '">' +
+                  '<div class="row-top">' +
+                    '<span class="id">ID ' + esc(u.telegramId) + '</span>' +
+                    (u.active === false ? '<span class="pill cancelled"><span class="dot"></span>Неактивен</span>' : '') +
+                  '</div>' +
+                  fieldHTML("Имя", inputHTML("name", u.name)) +
+                  '<div class="field" style="margin-bottom:0;"><label>Роль</label>' + roleSelectHTML("role", u.role) + '</div>' +
+                '</div>';
+              }).join("")
+            : '<div class="empty-state"><span class="eyebrow">Пусто</span><p>Пользователей пока нет</p></div>') +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">Новый пользователь</span>' +
+          '<div style="margin-top:12px;" id="new-user">' +
+            fieldHTML("Telegram ID", '<input data-f="telegramId" type="text" inputmode="numeric" placeholder="Например, 100200300" />') +
+            fieldHTML("Имя", '<input data-f="name" placeholder="Имя" />') +
+            '<div class="field"><label>Роль</label>' + roleSelectHTML("role", "client") + '</div>' +
+            '<button class="btn-primary" id="add-user">Добавить пользователя</button>' +
+          '</div>' +
+        '</div>';
+
+      main.querySelectorAll(".row-card[data-tgid]").forEach(function (card) {
+        function saveUser() {
+          var payload = {
+            telegramId: card.getAttribute("data-tgid"),
+            name: card.querySelector('[data-f="name"]').value,
+            role: card.querySelector('[data-f="role"]').value
+          };
+          apiPost("createOrUpdateUser", payload)
+            .then(assertOk)
+            .then(function () { toast("Сохранено: ID " + payload.telegramId); })
+            .catch(function (e) { toast(errMsg(e)); });
+        }
+        card.querySelector('[data-f="name"]').addEventListener("change", saveUser);
+        card.querySelector('[data-f="role"]').addEventListener("change", saveUser);
+      });
+
+      document.getElementById("add-user").addEventListener("click", function () {
+        var form = document.getElementById("new-user");
+        var payload = {
+          telegramId: form.querySelector('[data-f="telegramId"]').value.trim(),
+          name: form.querySelector('[data-f="name"]').value.trim(),
+          role: form.querySelector('[data-f="role"]').value
+        };
+        if (!payload.telegramId) { toast("Укажите Telegram ID"); return; }
+        var btn = document.getElementById("add-user");
+        btn.disabled = true;
+        apiPost("createOrUpdateUser", payload)
+          .then(assertOk)
+          .then(function () { toast("Пользователь добавлен"); renderTab(); })
+          .catch(function (e) { toast(errMsg(e)); btn.disabled = false; });
+      });
+    }).catch(function (e) {
+      if (state.tab !== "people") return;
+      main.innerHTML = errorHTML(errMsg(e));
+      toast(errMsg(e));
+    });
+  }
+
+  // ---------------- Зоны ----------------
+  function renderZones(main) {
+    apiPost("getZones", {}).then(assertOk).then(function (res) {
+      if (state.tab !== "zones") return;
+      var zones = (res && res.zones) || [];
+
+      main.innerHTML =
+        '<div class="screen-title-row"><div class="screen-title">Зоны</div>' +
+        '<div class="screen-sub">' + zones.length + ' зон доставки · имя зоны — ключ</div></div>' +
+
+        '<div class="row-list">' +
+          (zones.length
+            ? zones.map(function (z) {
+                return '<div class="row-card" data-zone="' + esc(z.name) + '">' +
+                  '<div class="row-top"><span class="kv-key">' + esc(z.name) + '</span></div>' +
+                  '<div class="grid-2">' +
+                    fieldHTML("Широта", inputHTML("lat", z.lat, 'type="number" step="any" inputmode="decimal"')) +
+                    fieldHTML("Долгота", inputHTML("lng", z.lng, 'type="number" step="any" inputmode="decimal"')) +
+                  '</div>' +
+                  fieldHTML("Радиус, км", inputHTML("radiusKm", z.radiusKm, 'type="number" step="any" inputmode="decimal"')) +
+                  fieldHTML("Срок доставки (etaText)", inputHTML("etaText", z.etaText, 'placeholder="Например, 1–2 часа"')) +
+                '</div>';
+              }).join("")
+            : '<div class="empty-state"><span class="eyebrow">Пусто</span><p>Зоны ещё не заданы</p></div>') +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">Новая зона</span>' +
+          '<div style="margin-top:12px;" id="new-zone">' +
+            fieldHTML("Название", '<input data-f="name" placeholder="Например, Центр" />') +
+            '<div class="grid-2">' +
+              fieldHTML("Широта", '<input data-f="lat" type="number" step="any" inputmode="decimal" />') +
+              fieldHTML("Долгота", '<input data-f="lng" type="number" step="any" inputmode="decimal" />') +
+            '</div>' +
+            fieldHTML("Радиус, км", '<input data-f="radiusKm" type="number" step="any" inputmode="decimal" />') +
+            fieldHTML("Срок доставки (etaText)", '<input data-f="etaText" placeholder="Например, 1–2 часа" />') +
+            '<button class="btn-primary" id="add-zone">Добавить зону</button>' +
+          '</div>' +
+        '</div>';
+
+      main.querySelectorAll(".row-card[data-zone]").forEach(function (card) {
+        card.querySelectorAll("input[data-f]").forEach(function (inp) {
+          inp.addEventListener("change", function () {
+            var payload = {
+              name: card.getAttribute("data-zone"),
+              lat: num(card.querySelector('[data-f="lat"]').value),
+              lng: num(card.querySelector('[data-f="lng"]').value),
+              radiusKm: num(card.querySelector('[data-f="radiusKm"]').value),
+              etaText: card.querySelector('[data-f="etaText"]').value
+            };
+            apiPost("upsertZone", payload)
+              .then(assertOk)
+              .then(function () { toast("Сохранено: " + payload.name); })
+              .catch(function (e) { toast(errMsg(e)); });
+          });
+        });
+      });
+
+      document.getElementById("add-zone").addEventListener("click", function () {
+        var form = document.getElementById("new-zone");
+        var payload = {
+          name: form.querySelector('[data-f="name"]').value.trim(),
+          lat: num(form.querySelector('[data-f="lat"]').value),
+          lng: num(form.querySelector('[data-f="lng"]').value),
+          radiusKm: num(form.querySelector('[data-f="radiusKm"]').value),
+          etaText: form.querySelector('[data-f="etaText"]').value.trim()
+        };
+        if (!payload.name) { toast("Укажите название зоны"); return; }
+        var btn = document.getElementById("add-zone");
+        btn.disabled = true;
+        apiPost("upsertZone", payload)
+          .then(assertOk)
+          .then(function () { toast("Зона добавлена"); renderTab(); })
+          .catch(function (e) { toast(errMsg(e)); btn.disabled = false; });
+      });
+    }).catch(function (e) {
+      if (state.tab !== "zones") return;
+      main.innerHTML = errorHTML(errMsg(e));
+      toast(errMsg(e));
+    });
+  }
+
+  // ---------------- Claude ----------------
+  function taskPill(status) {
+    var s = String(status || "").toLowerCase();
+    var done = s.indexOf("выполнено") !== -1 || s.indexOf("готово") !== -1 || s.indexOf("done") !== -1;
+    var cls = done ? "delivered" : "waiting";
+    var label = status ? esc(status) : "новое";
+    return '<span class="pill ' + cls + '"><span class="dot"></span>' + label + '</span>';
+  }
+
+  function renderClaude(main) {
+    apiPost("getTasks", {})
+      .then(assertOk)
+      .catch(function (e) { return { __err: errMsg(e) }; })
+      .then(function (res) {
+        if (state.tab !== "claude") return;
+        var tasks = res && Array.isArray(res.tasks) ? res.tasks.slice().reverse() : null;
+        var tErr = res && res.__err;
+
+        main.innerHTML =
+          '<div class="screen-title-row"><div class="screen-title">Claude</div>' +
+          '<div class="screen-sub">Задания ассистенту по доработке магазина</div></div>' +
+
+          '<div class="card">' +
+            '<span class="eyebrow">Новое задание</span>' +
+            '<div class="field" style="margin-top:12px;"><label>Что изменить?</label>' +
+              '<textarea id="task-text" rows="4" placeholder="Опишите задачу своими словами…"></textarea></div>' +
+            '<button class="btn-primary" id="task-send">Отправить задание</button>' +
+            '<p class="hint-note">Задания читает ассистент Claude в начале каждой рабочей сессии. Срочное — напишите в чат Claude напрямую.</p>' +
+          '</div>' +
+
+          '<div class="section-gap">' +
+            '<div class="screen-title" style="font-size:14px;">История заданий</div>' +
+            '<div class="row-list" style="margin-top:10px;">' +
+              (tasks === null
+                ? errorHTML(tErr || "Не удалось загрузить историю")
+                : (tasks.length
+                    ? tasks.map(function (t) {
+                        return '<div class="row-card">' +
+                          '<div class="row-top"><span class="date">' + esc(fmtDate(t.date)) + '</span>' + taskPill(t.status) + '</div>' +
+                          '<div class="task-text">' + esc(t.text) + '</div>' +
+                        '</div>';
+                      }).join("")
+                    : '<div class="empty-state"><span class="eyebrow">Пусто</span><p>Заданий пока нет</p></div>')) +
+            '</div>' +
+          '</div>';
+
+        if (tErr) toast(tErr);
+
+        document.getElementById("task-send").addEventListener("click", function () {
+          var ta = document.getElementById("task-text");
+          var text = ta.value.trim();
+          if (!text) { toast("Опишите задачу"); return; }
+          var btn = document.getElementById("task-send");
+          btn.disabled = true;
+          btn.textContent = "Отправляем…";
+          apiPost("addTask", { from: state.cubId, text: text })
+            .then(assertOk)
+            .then(function () {
+              toast("Задание записано — Claude выполнит в ближайшей сессии");
+              renderTab();
+            })
+            .catch(function (e) {
+              toast(errMsg(e));
+              btn.disabled = false;
+              btn.textContent = "Отправить задание";
+            });
+        });
+      });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
