@@ -1,0 +1,1 @@
+# magazin-veka
