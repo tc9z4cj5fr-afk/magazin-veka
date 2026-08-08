@@ -1023,8 +1023,8 @@
       main.innerHTML = '<div class="screen-title-row"><div class="screen-title">' + esc(t("cart_title")) + '</div></div><div class="empty-state"><span class="eyebrow">Пусто</span><p>Загляните в каталог, чтобы добавить товары</p></div>';
       return;
     }
-    // Курьер доступен клиенту только со статусом «доверенный»
-    var courierLocked = state.role === "client" && !state.trusted;
+    // Курьер и карта доступны всем клиентам (решение владельца 08.08.2026)
+    var courierLocked = false;
     main.innerHTML =
       '<div class="screen-title-row"><div class="screen-title">' + esc(t("cart_title")) + '</div></div>' +
       '<div class="card">' +
@@ -1056,9 +1056,6 @@
             '<button type="button" data-dtype="courier"' + (courierLocked ? ' disabled style="opacity:.5;cursor:default;"' : '') + '>Курьер</button>' +
           '</div>' +
         '</div>' +
-        (courierLocked
-          ? '<div style="font-size:11px;color:var(--muted);margin:-4px 0 12px;">Курьер откроется после покупок на ' + money(t("trusted_threshold") || 10000000) + ' — пока самовывоз</div>'
-          : '') +
         (t("pickup_address")
           ? '<div id="pickup-info" style="font-size:12px;color:var(--muted);margin:-4px 0 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span>Точка выдачи: ' + esc(t("pickup_address")) + '</span>' + pickupMapLink() + '</div>'
           : '') +
