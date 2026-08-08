@@ -333,7 +333,7 @@
     { id: "products", label: "Товары" },
     { id: "people", label: "Люди" },
     { id: "zones", label: "Зоны" },
-    { id: "claude", label: "Claude" }
+    { id: "claude", label: "Чат с админом" }
   ];
 
   var ROLES = [
@@ -584,6 +584,39 @@
         '</div>' +
 
         '<div class="card section-gap">' +
+          '<span class="eyebrow">Telegram-бот</span>' +
+          '<div id="bot-block"><p class="hint-note">Проверяем ботов…</p></div>' +
+        '</div>' +
+
+        '<div class="card section-gap">' +
+          '<span class="eyebrow">Оплата</span>' +
+          '<div class="state-row" style="margin-top:8px;">' +
+            '<span class="state-line">Оплата по QR вьетнамского банка</span>' +
+            (String(state.texts.qr_payment_enabled || "") === "1"
+              ? '<button class="act-btn" id="qr-toggle" style="color:var(--ok);">Включена — выключить</button>'
+              : '<button class="act-btn" id="qr-toggle" style="color:var(--danger);">Выключена — включить</button>') +
+          '</div>' +
+          '<p class="hint-note">Выключишь — у клиентов останутся наличные и USDT. Сама функция всегда готова к включению.</p>' +
+          fieldHTML("Реквизиты банка для QR-оплаты (номер счёта, имя — как есть, в несколько строк)",
+            '<textarea id="pay-bank" rows="3" placeholder="Vietcombank 012345678&#10;NGUYEN VAN A">' + esc(state.texts.pay_bank_details || "") + '</textarea>') +
+          fieldHTML("Ссылка на картинку QR-кода банка",
+            '<input id="pay-qr-img" value="' + esc(state.texts.pay_qr_image || "") + '" placeholder="https://…" />') +
+          fieldHTML("Адрес USDT-кошелька",
+            '<input id="pay-usdt" value="' + esc(state.texts.pay_usdt_address || "") + '" placeholder="T…" />') +
+          fieldHTML("Сеть USDT (обычно TRC20)",
+            '<input id="pay-usdt-net" value="' + esc(state.texts.pay_usdt_network || "TRC20") + '" />') +
+          '<div class="grid-2">' +
+            fieldHTML("Курс: 1 ₫ в рублях (например 0,0033)",
+              '<input id="rate-rub" inputmode="decimal" value="' + esc(state.texts.rate_vnd_to_rub || "") + '" placeholder="0,0033" />') +
+            fieldHTML("Курс: 1 ₫ в тенге (например 0,021)",
+              '<input id="rate-kzt" inputmode="decimal" value="' + esc(state.texts.rate_vnd_to_kzt || "") + '" placeholder="0,021" />') +
+          '</div>' +
+          fieldHTML("Курс: 1 ₫ в USDT (например 0,000038)",
+            '<input id="rate-usdt" inputmode="decimal" value="' + esc(state.texts.rate_vnd_to_usdt || "") + '" placeholder="0,000038" />') +
+          '<p class="hint-note">Курсы — только для подсказки клиенту «сколько это в ₽/₸». Оплата всегда в ₫ и USDT. Реквизиты вставляй сам, сохраняются сразу.</p>' +
+        '</div>' +
+
+        '<div class="card section-gap">' +
           '<span class="eyebrow">Ссылки</span>' +
           '<div class="link-list">' +
             '<a class="act-btn" href="index.html">Магазин</a>' +
@@ -615,10 +648,72 @@
             .catch(function (e) { toast(errMsg(e)); });
         });
       }
+
+      var qrToggle = document.getElementById("qr-toggle");
+      qrToggle.addEventListener("click", function () {
+        var newVal = String(state.texts.qr_payment_enabled || "") === "1" ? "0" : "1";
+        qrToggle.disabled = true;
+        apiPost("setText", { key: "qr_payment_enabled", value: newVal })
+          .then(assertOk)
+          .then(function () { toast(newVal === "1" ? "QR-оплата включена" : "QR-оплата выключена"); renderTab(); })
+          .catch(function (e) { toast(errMsg(e)); qrToggle.disabled = false; });
+      });
+      [["pay-bank", "pay_bank_details"], ["pay-qr-img", "pay_qr_image"], ["pay-usdt", "pay_usdt_address"],
+       ["pay-usdt-net", "pay_usdt_network"], ["rate-rub", "rate_vnd_to_rub"], ["rate-kzt", "rate_vnd_to_kzt"],
+       ["rate-usdt", "rate_vnd_to_usdt"]].forEach(function (p) {
+        var el = document.getElementById(p[0]);
+        if (!el) return;
+        el.addEventListener("change", function () {
+          apiPost("setText", { key: p[1], value: el.value })
+            .then(assertOk)
+            .then(function () { toast("Сохранено"); state.texts[p[1]] = el.value; })
+            .catch(function (e) { toast(errMsg(e)); });
+        });
+      });
+
+      renderBotBlock();
     }).catch(function (e) {
       if (state.tab !== "status") return;
       main.innerHTML = errorHTML(errMsg(e));
       toast(errMsg(e));
+    });
+  }
+
+  // Блок «Telegram-бот»: состояние основного и запасного, ручное переключение.
+  // Сторож в бэкенде проверяет основного каждые 30 минут и при блокировке
+  // переключает сам; кнопка — на случай, когда нужно не ждать.
+  function renderBotBlock() {
+    var box = document.getElementById("bot-block");
+    if (!box) return;
+    function pill(stateName) {
+      if (stateName === "alive") return '<span class="pill delivered"><span class="dot"></span>Работает</span>';
+      if (stateName === "blocked") return '<span class="pill cancelled"><span class="dot"></span>Заблокирован</span>';
+      return '<span class="pill"><span class="dot"></span>Не настроен</span>';
+    }
+    apiPost("getBotStatus", {}).then(assertOk).then(function (st) {
+      if (!document.getElementById("bot-block")) return;
+      var reserves = st.reserves || [];
+      var anyAlive = reserves.some(function (r) { return r.state === "alive"; });
+      box.innerHTML =
+        '<div class="state-row"><span class="state-line">Основной' + (st.mainName ? " · @" + esc(st.mainName) : "") + '</span>' + pill(st.main) + '</div>' +
+        reserves.map(function (r, i) {
+          return '<div class="state-row"><span class="state-line">Запасной ' + (i + 1) + (r.name ? " · @" + esc(r.name) : "") + '</span>' + pill(r.state) + '</div>';
+        }).join("") +
+        (anyAlive
+          ? '<button class="btn-primary" id="bot-switch" style="background:var(--danger);border-color:var(--danger);">Активировать запасного бота</button>' +
+            '<p class="hint-note">Первый живой запасной станет основным, кнопка «Открыть магазин» переедет к нему, остальные подвинутся в очереди. Сторож делает то же сам каждые 30 минут при блокировке.</p>'
+          : '<p class="hint-note">Живых запасных нет. Создайте ботов в BotFather и вставьте ключи в строки bot_token_2, bot_token_3, bot_token_4 листа «Тексты» — номер строки соответствует номеру бота.</p>');
+      var btn = document.getElementById("bot-switch");
+      if (btn) btn.addEventListener("click", function () {
+        if (!confirm("Переключить магазин на запасного бота? Основной перестанет использоваться.")) return;
+        btn.disabled = true;
+        apiPost("switchToReserveBot", {})
+          .then(assertOk)
+          .then(function (r) { toast("Магазин переключён на @" + (r.username || "нового бота")); renderBotBlock(); })
+          .catch(function (e) { toast(errMsg(e)); btn.disabled = false; });
+      });
+    }).catch(function (e) {
+      box.innerHTML = '<p class="hint-note">Не удалось проверить ботов: ' + esc(errMsg(e)) + '</p>';
     });
   }
 
@@ -1109,8 +1204,8 @@
         var tErr = res && res.__err;
 
         main.innerHTML =
-          '<div class="screen-title-row"><div class="screen-title">Claude</div>' +
-          '<div class="screen-sub">Задания ассистенту по доработке магазина</div></div>' +
+          '<div class="screen-title-row"><div class="screen-title">Чат с админом</div>' +
+          '<div class="screen-sub">Задания админу (Claude) по доработке магазина</div></div>' +
 
           '<div class="card">' +
             '<span class="eyebrow">Новое задание</span>' +
