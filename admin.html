@@ -441,7 +441,9 @@
         '</div>' +
         '<div class="id-field">' +
           '<label>Telegram ID</label>' +
-          '<input id="cub-login-id" type="text" inputmode="numeric" placeholder="Например, 224091557" />' +
+          '<input id="cub-login-id" type="text" inputmode="numeric" placeholder="Ваш номер" autocomplete="off" />' +
+          '<label style="margin-top:12px;">Пароль пульта</label>' +
+          '<input id="cub-login-pin" type="password" placeholder="Пароль" autocomplete="current-password" />' +
           '<div class="hint" id="cub-login-hint">Доступ только для владельца.</div>' +
         '</div>' +
         '<button class="btn-primary" id="cub-login-btn">Войти</button>' +
@@ -452,20 +454,20 @@
     var btn = document.getElementById("cub-login-btn");
     var hint = document.getElementById("cub-login-hint");
 
+    // Роль и пароль проверяет бэкенд (cubLogin): в браузере такой проверке верить
+    // нельзя — раньше пульт пускал по одному номеру, а номер владельца не секрет.
     function doLogin() {
       var id = input.value.trim();
+      var pinEl = document.getElementById("cub-login-pin");
+      var pin = pinEl ? pinEl.value : "";
       if (!id) { toast("Укажите Telegram ID"); return; }
+      if (!pin) { toast("Введите пароль пульта"); return; }
       btn.disabled = true;
       btn.textContent = "Проверяем…";
-      apiPost("getTexts")
+      apiPost("cubLogin", { telegramId: id, pin: pin })
         .then(assertOk)
         .then(function (res) {
-          state.texts = (res && res.texts) || {};
-          var raw = String(state.texts.cub_admins || "");
-          var admins = raw.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
-          if (!admins.length) admins = [DEFAULT_ADMIN];
-          var buh = String(state.texts.cub_buh || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean);
-          var role = admins.indexOf(id) !== -1 ? "owner" : (buh.indexOf(id) !== -1 ? "buh" : "");
+          var role = res && res.role;
           if (!role) {
             btn.disabled = false;
             btn.textContent = "Войти";
@@ -489,6 +491,8 @@
 
     btn.addEventListener("click", doLogin);
     input.addEventListener("keydown", function (ev) { if (ev.key === "Enter") doLogin(); });
+    var pinInput = document.getElementById("cub-login-pin");
+    if (pinInput) pinInput.addEventListener("keydown", function (ev) { if (ev.key === "Enter") doLogin(); });
   }
 
   function renderApp() {
@@ -1066,14 +1070,17 @@
         '</div>';
 
       main.querySelectorAll(".row-card[data-tgid]").forEach(function (card) {
+        // Имя и роль сохраняются раздельно: createOrUpdateUser роль больше не
+        // принимает (её мог подставить кто угодно), роль ставит updateSotrydnikRole.
         function saveUser() {
           var payload = {
             telegramId: card.getAttribute("data-tgid"),
-            name: card.querySelector('[data-f="name"]').value,
-            role: card.querySelector('[data-f="role"]').value
+            name: card.querySelector('[data-f="name"]').value
           };
+          var newRole = card.querySelector('[data-f="role"]').value;
           apiPost("createOrUpdateUser", payload)
             .then(assertOk)
+            .then(function () { return apiPost("updateSotrydnikRole", { sotrydnikId: payload.telegramId, newRole: newRole }).then(assertOk); })
             .then(function () { toast("Сохранено: ID " + payload.telegramId); })
             .catch(function (e) { toast(errMsg(e)); });
         }
@@ -1085,14 +1092,15 @@
         var form = document.getElementById("new-user");
         var payload = {
           telegramId: form.querySelector('[data-f="telegramId"]').value.trim(),
-          name: form.querySelector('[data-f="name"]').value.trim(),
-          role: form.querySelector('[data-f="role"]').value
+          name: form.querySelector('[data-f="name"]').value.trim()
         };
+        var newRole = form.querySelector('[data-f="role"]').value;
         if (!payload.telegramId) { toast("Укажите Telegram ID"); return; }
         var btn = document.getElementById("add-user");
         btn.disabled = true;
         apiPost("createOrUpdateUser", payload)
           .then(assertOk)
+          .then(function () { return newRole === "client" ? null : apiPost("updateSotrydnikRole", { sotrydnikId: payload.telegramId, newRole: newRole }).then(assertOk); })
           .then(function () { toast("Пользователь добавлен"); renderTab(); })
           .catch(function (e) { toast(errMsg(e)); btn.disabled = false; });
       });
