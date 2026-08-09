@@ -854,7 +854,8 @@
         state.sotrudnikiLoaded = false;
         localStorage.setItem("ppm_role", state.role);
         localStorage.setItem("ppm_tgid", idv);
-        apiPost("createOrUpdateUser", { telegramId: idv, role: state.role, name: state.name || "" }).catch(function () {});
+        // Роль в базу отсюда НЕ пишем: карточки — локальный тестовый вход.
+        // Иначе выбор «Владелец» на экране входа делал бы владельцем в базе.
         render();
       });
     });
@@ -2102,8 +2103,11 @@
         var name = document.getElementById("new-name").value.trim();
         var role = document.getElementById("new-role").value;
         if (!id) { toast("Укажите Telegram ID"); return; }
-        apiPost("createOrUpdateUser", { telegramId: id, role: role, name: name })
+        // Два шага: заводим человека (всегда клиентом), затем владелец назначает роль.
+        // Роль больше не передаётся при создании — см. createOrUpdateUser в бэкенде.
+        apiPost("createOrUpdateUser", { telegramId: id, name: name })
           .then(assertOk)
+          .then(function () { return role === "client" ? null : apiPost("updateSotrydnikRole", { sotrydnikId: id, newRole: role }).then(assertOk); })
           .then(function () { toast("Добавлен: " + ROLE_MAP[role].label); state.sotrudnikiLoaded = false; renderApp(); })
           .catch(function (err) { toast(err && err.message ? err.message : "Сохранено локально (демо)"); });
       });
