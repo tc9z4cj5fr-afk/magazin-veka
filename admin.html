@@ -507,17 +507,21 @@
   }
 
   function renderLogin() {
+    // Открыт как мини-апп «ЦУБ Века» внутри Telegram — сам подставляем номер
+    // владельца (Telegram его сообщает), остаётся ввести только пароль.
+    var tgId = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) ? String(tg.initDataUnsafe.user.id) : "";
+    var prefillId = state.cubId || tgId || "";
     shell.innerHTML =
       '<div class="login">' +
         '<div class="login-head">' +
           '<span class="eyebrow">Центр управления бизнесом</span>' +
           '<div class="mark">' + MARK + '</div>' +
-          '<h1>ЦУБ</h1>' +
+          '<h1>ЦУБ Века</h1>' +
           '<p>Личный пульт владельца «Магазина Века»</p>' +
         '</div>' +
         '<div class="id-field">' +
-          '<label>Telegram ID</label>' +
-          '<input id="cub-login-id" type="text" inputmode="numeric" placeholder="Ваш номер" autocomplete="off" />' +
+          '<label>Telegram ID' + (tgId ? ' · определён автоматически' : '') + '</label>' +
+          '<input id="cub-login-id" type="text" inputmode="numeric" placeholder="Ваш номер" autocomplete="off" value="' + esc(prefillId) + '"' + (tgId ? ' readonly' : '') + ' />' +
           '<label style="margin-top:12px;">Пароль пульта</label>' +
           '<input id="cub-login-pin" type="password" placeholder="Пароль" autocomplete="current-password" />' +
           '<div class="hint" id="cub-login-hint">Доступ только для владельца.</div>' +
@@ -527,6 +531,8 @@
       '<div class="toast" id="toast"></div>';
 
     var input = document.getElementById("cub-login-id");
+    // В Telegram сразу ставим курсор в поле пароля — номер уже подставлен
+    if (tgId) { var pinPre = document.getElementById("cub-login-pin"); if (pinPre) setTimeout(function () { pinPre.focus(); }, 60); }
     var btn = document.getElementById("cub-login-btn");
     var hint = document.getElementById("cub-login-hint");
 
