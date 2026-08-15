@@ -1271,12 +1271,21 @@
     '</div>';
   }
 
+  // Кнопка «Задать вопрос магазину» у клиента: ведёт в чат с ботом, где вопрос
+  // пересылается владельцу/продавцу. Появляется, когда чат включён на сервере
+  // (setupClientChat ставит chat_enabled=1 в «Текстах»).
+  function askShopButton() {
+    if (state.role !== "client") return "";
+    if (t("chat_enabled") !== "1" || !t("bot_main_username")) return "";
+    return '<div style="margin:-4px 0 12px;"><a class="act-btn" href="https://t.me/' + esc(t("bot_main_username")) + '" target="_blank" rel="noopener">Задать вопрос магазину</a></div>';
+  }
+
   function renderOrders(main) {
     Promise.all([loadOrders(), loadPayInfo()]).then(function (rs) {
       var list = rs[0];
       if (state.tab !== "orders") return;
       if (!list.length) {
-        main.innerHTML = '<div class="screen-title-row"><div class="screen-title">' + esc(t("orders_title")) + '</div></div><div class="empty-state"><span class="eyebrow">Пусто</span><p>Заказов пока нет</p></div>';
+        main.innerHTML = '<div class="screen-title-row"><div class="screen-title">' + esc(t("orders_title")) + '</div></div>' + askShopButton() + '<div class="empty-state"><span class="eyebrow">Пусто</span><p>Заказов пока нет</p></div>';
         return;
       }
       var isOwner = state.role === "owner" || state.role === "admin";
@@ -1284,6 +1293,7 @@
       var isClient = state.role === "client";
       main.innerHTML =
         '<div class="screen-title-row"><div class="screen-title">' + esc(t("orders_title")) + '</div><div class="screen-sub">' + list.length + ' записей</div></div>' +
+        askShopButton() +
         '<div class="row-list">' +
         list.map(function (o) {
           var sm = statusMeta(o.status);
