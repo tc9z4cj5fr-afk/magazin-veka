@@ -526,6 +526,9 @@
   function apiPost(action, payload) {
     var body = payload || {};
     body.s = "9f84d4915e7ff316c335e30370bfc2eb";
+    // Подпись Telegram: по ней сервер проверяет, кто мы, и открывает разделы роли.
+    // В обычном браузере подписи нет — работают только клиентские разделы.
+    if (tg && tg.initData) body.initData = tg.initData;
     return fetch(API_URL + "?action=" + encodeURIComponent(action), {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -828,7 +831,7 @@
           '<label>Telegram ID' + (tg ? " · определён автоматически" : "") + '</label>' +
           '<input id="tgid-input" type="text" inputmode="numeric" placeholder="Например, 224091557" value="' + idVal + '" ' + (tg && idVal ? "readonly" : "") + ' />' +
           '<button class="btn-primary" id="login-by-id" style="margin-top:10px;">Войти — роль определит база</button>' +
-          '<div class="hint">ID сверяется с листом «Пользователи»: сотрудник получает свои разделы, незнакомый ID входит клиентом. Карточки выше — ручной вход для тестов.</div>' +
+          '<div class="hint">ID сверяется с листом «Пользователи»: сотрудник получает свои разделы, незнакомый ID входит клиентом. Разделы сотрудников работают только при открытии магазина через Telegram-бота — в обычном браузере сервер их не пустит. Карточки выше — ручной вход для тестов.</div>' +
         '</div>' +
       '</div>';
 
@@ -1375,7 +1378,7 @@
             var reader = new FileReader();
             reader.onload = function () {
               var base64 = String(reader.result).split(",")[1] || "";
-              apiPost("uploadPaymentProof", { orderId: oid, base64: base64, mimeType: file.type })
+              apiPost("uploadPaymentProof", { orderId: oid, telegramId: state.telegramId, base64: base64, mimeType: file.type })
                 .then(assertOk)
                 .then(function () { toast("Скрин отправлен — ждём подтверждения"); state.ordersLoaded = false; renderApp(); })
                 .catch(function (err) { toast(err && err.message ? err.message : "Не удалось отправить"); btn.disabled = false; btn.textContent = "Отправить скрин"; });
@@ -1388,7 +1391,7 @@
           btn.addEventListener("click", function () {
             var oid = btn.closest(".row-card").getAttribute("data-oid");
             btn.disabled = true;
-            apiPost("requestCancellation", { orderId: oid })
+            apiPost("requestCancellation", { orderId: oid, telegramId: state.telegramId })
               .then(assertOk)
               .then(function () { toast("Заказ отменён"); })
               .catch(function (err) { toast(err && err.message ? err.message : "Отменено локально (демо)"); })
@@ -1863,7 +1866,7 @@
             '</select></div>' +
             '<div class="grid-2">' +
               '<div class="field"><label>Граммы</label><input id="rc-grams" type="number" step="0.05" inputmode="decimal" /></div>' +
-              '<div class="field"><label>Цена закупа, ₽/г</label><input id="rc-cost" type="number" step="any" inputmode="decimal" /></div>' +
+              '<div class="field"><label>Цена закупа, ₫/г</label><input id="rc-cost" type="number" step="any" inputmode="decimal" /></div>' +
             '</div>' +
             '<div class="field"><label>Поставщик</label><input id="rc-supplier" type="text" /></div>' +
             '<div class="field"><label>Комментарий</label><input id="rc-note" type="text" /></div>' +
@@ -1871,7 +1874,7 @@
           '</div>' +
         '</div>' +
         '<div class="card">' +
-        '<div class="prod-head"><span class="eyebrow">Камень</span><span class="eyebrow editable-w" style="text-align:right;">Цена, ₽/г</span><span class="eyebrow editable-w" style="text-align:right;">Ост., г</span></div>' +
+        '<div class="prod-head"><span class="eyebrow">Камень</span><span class="eyebrow editable-w" style="text-align:right;">Цена, ₫/г</span><span class="eyebrow editable-w" style="text-align:right;">Ост., г</span></div>' +
         list.map(function (p) {
           return '<div class="prod-row" data-id="' + p.tovarId + '">' +
             '<div><div class="name">' + esc(p.name) + '</div><div class="sku">ID ' + esc(p.tovarId) + '</div></div>' +
@@ -1902,7 +1905,7 @@
         apiPost("addReceipt", payload)
           .then(assertOk)
           .then(function (res) {
-            toast("Приход: остаток " + res.newStock + " г, себестоимость " + res.avgCostPerGram + " ₽/г");
+            toast("Приход: остаток " + res.newStock + " г, себестоимость " + res.avgCostPerGram + " ₫/г");
             state.productsLoaded = false;
             renderApp();
           })

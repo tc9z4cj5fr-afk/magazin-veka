@@ -351,23 +351,40 @@
   var state = {
     cubId: localStorage.getItem("cub_id") || "",
     role: localStorage.getItem("cub_role") || "owner",
+    cubToken: localStorage.getItem("cub_token") || "",
     tab: "status",
     texts: {}
   };
   if (state.role === "buh") state.tab = "analytics";
+  // Пульт без пропуска бесполезен (сервер откажет) — сразу на экран входа
+  if (state.cubId && !state.cubToken) state.cubId = "";
 
   // ---------------- API ----------------
   function apiPost(action, payload) {
     var body = payload || {};
     body.s = "9f84d4915e7ff316c335e30370bfc2eb";
+    // Пропуск, выданный после пароля владельца: по нему сервер даёт права ЦУБ
+    if (state.cubToken) body.cubToken = state.cubToken;
     return fetch(API_URL + "?action=" + encodeURIComponent(action), {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(body)
     }).then(function (r) { return r.json(); });
   }
+  // Пропуск истёк или прав нет — выходим на экран входа, чтобы войти заново
+  function cubLogout_() {
+    state.cubId = "";
+    state.cubToken = "";
+    localStorage.removeItem("cub_id");
+    localStorage.removeItem("cub_role");
+    localStorage.removeItem("cub_token");
+    setTimeout(render, 60);
+  }
   function assertOk(res) {
-    if (res && res.success === false) throw new Error(res.error || "Ошибка сервера");
+    if (res && res.success === false) {
+      if (res.authRequired) cubLogout_();
+      throw new Error(res.error || "Ошибка сервера");
+    }
     return res;
   }
 
@@ -381,7 +398,7 @@
     return (e && e.message) ? e.message : "Ошибка запроса";
   }
   function money(n) {
-    return (Number(n) || 0).toLocaleString("ru-RU") + " ₽";
+    return (Number(n) || 0).toLocaleString("ru-RU") + " ₫";
   }
   function num(v) {
     var n = parseFloat(v);
@@ -392,6 +409,52 @@
     var d = new Date(v);
     if (isNaN(d.getTime())) return String(v);
     return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" });
+  }
+  // Список месяцев для отчёта и выгрузка CSV
+  var MONTH_NAMES_RU = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
+  function monthKeyNow_() {
+    var d = new Date();
+    return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2);
+  }
+  function monthOptionsHTML_(sel) {
+    var out = "";
+    var d = new Date();
+    for (var i = 0; i < 12; i++) {
+      var val = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2);
+      out += '<option value="' + val + '"' + (val === (sel || monthKeyNow_()) ? " selected" : "") + '>' +
+        MONTH_NAMES_RU[d.getMonth()] + " " + d.getFullYear() + '</option>';
+      d.setDate(1);
+      d.setMonth(d.getMonth() - 1);
+    }
+    return out;
+  }
+  function csvCell_(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
+  function downloadCsv_(rows, fname) {
+    var csv = "\uFEFF" + rows.map(function (r) { return r.map(csvCell_).join(";"); }).join("\r\n");
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  // Фото с телефона: ужимаем до 1200 px по большой стороне и отдаём base64 (JPEG)
+  function fileToJpegBase64_(file, maxSide, cb) {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function () {
+      try {
+        var k = Math.min(1, maxSide / Math.max(img.width, img.height));
+        var c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.width * k));
+        c.height = Math.max(1, Math.round(img.height * k));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        cb(c.toDataURL("image/jpeg", 0.85).split(",")[1] || null);
+      } catch (e) { URL.revokeObjectURL(url); cb(null); }
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); cb(null); };
+    img.src = url;
   }
   var toastTimer = null;
   function toast(msg) {
@@ -477,9 +540,11 @@
           }
           state.cubId = id;
           state.role = role;
+          state.cubToken = (res && res.token) || "";
           state.tab = role === "buh" ? "analytics" : "status";
           localStorage.setItem("cub_id", id);
           localStorage.setItem("cub_role", role);
+          localStorage.setItem("cub_token", state.cubToken);
           render();
         })
         .catch(function (e) {
@@ -516,7 +581,9 @@
     document.getElementById("cub-logout").addEventListener("click", function () {
       localStorage.removeItem("cub_id");
       localStorage.removeItem("cub_role");
+      localStorage.removeItem("cub_token");
       state.cubId = "";
+      state.cubToken = "";
       state.role = "owner";
       state.tab = "status";
       render();
@@ -732,7 +799,8 @@
   }
 
   function renderAnalytics(main) {
-    apiPost("getAnalytics", {}).then(assertOk).then(function (res) {
+    var monthKey = state.anMonth || monthKeyNow_();
+    apiPost("getAnalytics", { month: monthKey }).then(assertOk).then(function (res) {
       if (state.tab !== "analytics") return;
       var a = (res && res.analytics) || {};
       var p = a.panel || {};
@@ -747,6 +815,13 @@
       main.innerHTML =
         '<div class="screen-title-row"><div class="screen-title">Аналитика</div>' +
         '<div class="screen-sub">Финансы магазина за месяц</div></div>' +
+
+        '<div class="card" style="margin-bottom:16px;">' +
+          '<div class="grid-2">' +
+            fieldHTML("Месяц отчёта", '<select id="an-month">' + monthOptionsHTML_(monthKey) + '</select>') +
+            '<div class="field"><label>Отчёт файлом</label><button class="act-btn" id="an-csv" style="width:100%;">Скачать CSV</button></div>' +
+          '</div>' +
+        '</div>' +
 
         '<div class="stat-grid">' +
           '<div class="stat-card"><div class="val">' + money(p.revenueMonth) + '</div><div class="lbl">Выручка за месяц</div></div>' +
@@ -770,7 +845,7 @@
         '</div>' +
 
         '<div class="card section-gap">' +
-          '<span class="eyebrow">ДДС · поступления 30 дней</span>' +
+          '<span class="eyebrow">ДДС · поступления за месяц</span>' +
           (dds.length
             ? '<div class="bars">' +
                 dds.map(function (d) {
@@ -781,7 +856,7 @@
                     '<span class="num">' + money(v) + '</span></div>';
                 }).join("") +
               '</div>'
-            : '<div class="empty-state" style="margin-top:12px;"><span class="eyebrow">Пусто</span><p>Поступлений за 30 дней нет</p></div>') +
+            : '<div class="empty-state" style="margin-top:12px;"><span class="eyebrow">Пусто</span><p>Поступлений за месяц нет</p></div>') +
         '</div>' +
 
         '<div class="card section-gap">' +
@@ -816,12 +891,47 @@
             fieldHTML("Категория", '<select id="exp-cat">' +
               EXPENSE_CATS.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join("") +
             '</select>') +
-            fieldHTML("Сумма, ₽", '<input id="exp-amount" type="number" step="any" inputmode="decimal" />') +
+            fieldHTML("Сумма, ₫", '<input id="exp-amount" type="number" step="any" inputmode="decimal" />') +
             fieldHTML("Комментарий", '<input id="exp-note" placeholder="Необязательно" />') +
             '<button class="btn-primary" id="exp-add">Добавить расход</button>' +
           '</div>' +
         '</div>';
 
+      document.getElementById("an-month").addEventListener("change", function () {
+        state.anMonth = this.value;
+        renderTab();
+      });
+      document.getElementById("an-csv").addEventListener("click", function () {
+        var rows = [
+          ["Отчёт ЦУБ за месяц", monthKey],
+          [],
+          ["Показатель", "Значение"],
+          ["Выручка", Number(p.revenueMonth) || 0],
+          ["Заказы", Number(p.ordersMonth) || 0],
+          ["Средний чек", Number(p.avgCheck) || 0],
+          ["Должники (всего, на сегодня)", debt],
+          [],
+          ["P&L", ""],
+          ["Выручка", Number(pnl.revenue) || 0],
+          ["Себестоимость", Number(pnl.cogs) || 0],
+          ["Валовая прибыль", Number(pnl.grossProfit) || 0],
+          ["Расходы", Number(pnl.expenses) || 0],
+          ["Курьерские", Number(pnl.courierFees) || 0],
+          ["Чистая прибыль", net],
+          ["Маржа, %", Number(pnl.marginPct) || 0],
+          [],
+          ["Поступления по дням", ""]
+        ];
+        dds.forEach(function (x) { rows.push([x.day, Number(x.inflow) || 0]); });
+        rows.push([]);
+        rows.push(["Юнит-экономика", "Граммы", "Выручка", "Маржа с грамма"]);
+        units.forEach(function (u) { rows.push([u.name, Number(u.grams) || 0, Number(u.revenue) || 0, Number(u.marginPerGram) || 0]); });
+        rows.push([]);
+        rows.push(["Расходы по категориям", ""]);
+        cats.forEach(function (c) { rows.push([c.cat, Number(c.amount) || 0]); });
+        downloadCsv_(rows, "otchet_" + monthKey + ".csv");
+        toast("Отчёт скачан");
+      });
       document.getElementById("exp-add").addEventListener("click", function () {
         var amount = num(document.getElementById("exp-amount").value);
         if (amount <= 0) { toast("Укажите сумму"); return; }
@@ -930,10 +1040,11 @@
                   '<div class="row-top"><span class="kv-key">ID ' + esc(p.id) + '</span></div>' +
                   fieldHTML("Название", inputHTML("name", p.name)) +
                   '<div class="grid-2">' +
-                    fieldHTML("Цена, ₽/г", inputHTML("price", p.price, 'type="number" step="any" inputmode="decimal"')) +
+                    fieldHTML("Цена, ₫/г", inputHTML("price", p.price, 'type="number" step="any" inputmode="decimal"')) +
                     fieldHTML("Остаток, г", inputHTML("ostatok", p.ostatok, 'type="number" step="any" inputmode="decimal"')) +
                   '</div>' +
                   fieldHTML("Фото (URL)", inputHTML("image", p.image, 'placeholder="https://…"')) +
+                  fieldHTML("Фото файлом (загрузится на Google Диск)", '<input type="file" accept="image/*" class="imgfile" />') +
                 '</div>';
               }).join("")
             : '<div class="empty-state"><span class="eyebrow">Пусто</span><p>Камни ещё не добавлены</p></div>') +
@@ -948,7 +1059,7 @@
             '</select>') +
             '<div class="grid-2">' +
               fieldHTML("Граммы", '<input data-f="grams" type="number" step="0.05" inputmode="decimal" />') +
-              fieldHTML("Цена закупа, ₽/г", '<input data-f="costPerGram" type="number" step="any" inputmode="decimal" />') +
+              fieldHTML("Цена закупа, ₫/г", '<input data-f="costPerGram" type="number" step="any" inputmode="decimal" />') +
             '</div>' +
             fieldHTML("Поставщик", '<input data-f="supplier" placeholder="Например, GemSource" />') +
             fieldHTML("Комментарий", '<input data-f="note" placeholder="Необязательно" />') +
@@ -961,10 +1072,11 @@
           '<div style="margin-top:12px;" id="new-product">' +
             fieldHTML("Название", '<input data-f="name" placeholder="Например, Сапфир" />') +
             '<div class="grid-2">' +
-              fieldHTML("Цена, ₽/г", '<input data-f="price" type="number" step="any" inputmode="decimal" />') +
+              fieldHTML("Цена, ₫/г", '<input data-f="price" type="number" step="any" inputmode="decimal" />') +
               fieldHTML("Остаток, г", '<input data-f="ostatok" type="number" step="any" inputmode="decimal" />') +
             '</div>' +
             fieldHTML("Фото (URL)", '<input data-f="image" placeholder="https://…" />') +
+            fieldHTML("Фото файлом (загрузится на Google Диск)", '<input type="file" accept="image/*" id="np-imgfile" />') +
             '<button class="btn-primary" id="add-product">Добавить камень</button>' +
           '</div>' +
         '</div>';
@@ -987,6 +1099,42 @@
         });
       });
 
+      // Фото файлом: ужать → на Диск → ссылка в поле «Фото (URL)» → автосохранение
+      main.querySelectorAll(".row-card[data-id] .imgfile").forEach(function (inp) {
+        inp.addEventListener("change", function () {
+          var card = inp.closest(".row-card");
+          var file = inp.files && inp.files[0];
+          if (!file) return;
+          toast("Загружаем фото…");
+          fileToJpegBase64_(file, 1200, function (b64) {
+            if (!b64) { toast("Не удалось прочитать фото"); return; }
+            apiPost("uploadProductImage", { tovarId: card.getAttribute("data-id"), base64: b64, mimeType: "image/jpeg" })
+              .then(assertOk)
+              .then(function (r) {
+                var imgInput = card.querySelector('[data-f="image"]');
+                imgInput.value = r.url;
+                imgInput.dispatchEvent(new Event("change"));
+              })
+              .catch(function (e) { toast(errMsg(e)); });
+          });
+        });
+      });
+      document.getElementById("np-imgfile").addEventListener("change", function () {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        toast("Загружаем фото…");
+        fileToJpegBase64_(file, 1200, function (b64) {
+          if (!b64) { toast("Не удалось прочитать фото"); return; }
+          apiPost("uploadProductImage", { base64: b64, mimeType: "image/jpeg" })
+            .then(assertOk)
+            .then(function (r) {
+              document.querySelector('#new-product [data-f="image"]').value = r.url;
+              toast("Фото загружено — ссылка вставлена, осталось нажать «Добавить камень»");
+            })
+            .catch(function (e) { toast(errMsg(e)); });
+        });
+      });
+
       document.getElementById("add-receipt").addEventListener("click", function () {
         var form = document.getElementById("receipt-form");
         var payload = {
@@ -1004,7 +1152,7 @@
         apiPost("addReceipt", payload)
           .then(assertOk)
           .then(function (res) {
-            toast("Приход: остаток " + res.newStock + " г, себестоимость " + res.avgCostPerGram + " ₽/г");
+            toast("Приход: остаток " + res.newStock + " г, себестоимость " + res.avgCostPerGram + " ₫/г");
             renderTab();
           })
           .catch(function (e) { toast(errMsg(e)); btn.disabled = false; });
@@ -1229,9 +1377,13 @@
                 ? errorHTML(tErr || "Не удалось загрузить историю")
                 : (tasks.length
                     ? tasks.map(function (t) {
+                        var isNew = String(t.status || "новое").toLowerCase() === "новое";
                         return '<div class="row-card">' +
                           '<div class="row-top"><span class="date">' + esc(fmtDate(t.date)) + '</span>' + taskPill(t.status) + '</div>' +
                           '<div class="task-text">' + esc(t.text) + '</div>' +
+                          (isNew && t.row
+                            ? '<div class="row-actions" style="margin-top:8px;"><button class="act-btn" data-act="task-done" data-row="' + esc(t.row) + '">Отметить выполненным</button></div>'
+                            : '') +
                         '</div>';
                       }).join("")
                     : '<div class="empty-state"><span class="eyebrow">Пусто</span><p>Заданий пока нет</p></div>')) +
@@ -1258,6 +1410,16 @@
               btn.disabled = false;
               btn.textContent = "Отправить задание";
             });
+        });
+
+        main.querySelectorAll("[data-act=task-done]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            btn.disabled = true;
+            apiPost("setTaskStatus", { row: btn.getAttribute("data-row"), status: "выполнено" })
+              .then(assertOk)
+              .then(function () { toast("Задание закрыто"); renderTab(); })
+              .catch(function (e) { toast(errMsg(e)); btn.disabled = false; });
+          });
         });
       });
   }
