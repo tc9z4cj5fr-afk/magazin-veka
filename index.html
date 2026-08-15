@@ -1027,8 +1027,10 @@
       main.innerHTML = '<div class="screen-title-row"><div class="screen-title">' + esc(t("cart_title")) + '</div></div><div class="empty-state"><span class="eyebrow">Пусто</span><p>Загляните в каталог, чтобы добавить товары</p></div>';
       return;
     }
-    // Курьер и карта доступны всем клиентам (решение владельца 08.08.2026)
-    var courierLocked = false;
+    // Курьер и карта доступны всем клиентам (решение владельца 08.08.2026);
+    // но владелец может глобально выключить доставку тумблером в ЦУБ
+    // (ключ courier_enabled: "0" — выключена, пусто/"1" — включена)
+    var courierLocked = t("courier_enabled") === "0";
     main.innerHTML =
       '<div class="screen-title-row"><div class="screen-title">' + esc(t("cart_title")) + '</div></div>' +
       '<div class="card">' +
