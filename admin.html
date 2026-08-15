@@ -429,10 +429,23 @@
     return out;
   }
   function csvCell_(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
+  // \u0421\u043A\u0430\u0447\u0438\u0432\u0430\u043D\u0438\u0435 \u043D\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0435: \u0441\u043D\u0430\u0447\u0430\u043B\u0430 \u043F\u0440\u043E\u0431\u0443\u0435\u043C \u0441\u0438\u0441\u0442\u0435\u043C\u043D\u043E\u0435 \u00AB\u041F\u043E\u0434\u0435\u043B\u0438\u0442\u044C\u0441\u044F\u00BB (\u0431\u0440\u0430\u0443\u0437\u0435\u0440 \u0441\u0430\u043C
+  // \u043F\u0440\u0435\u0434\u043B\u043E\u0436\u0438\u0442 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u0444\u0430\u0439\u043B) \u2014 \u043E\u0431\u044B\u0447\u043D\u0430\u044F \u0441\u0441\u044B\u043B\u043A\u0430-\u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0432\u043D\u0443\u0442\u0440\u0438 Telegram \u0438 \u0447\u0430\u0441\u0442\u0438
+  // \u043C\u043E\u0431\u0438\u043B\u044C\u043D\u044B\u0445 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u043E\u0432 \u043C\u043E\u043B\u0447\u0430 \u043D\u0435 \u0441\u0440\u0430\u0431\u0430\u0442\u044B\u0432\u0430\u0435\u0442.
   function downloadCsv_(rows, fname) {
     var csv = "\uFEFF" + rows.map(function (r) { return r.map(csvCell_).join(";"); }).join("\r\n");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    var file = null;
+    try { file = new File([blob], fname, { type: "text/csv" }); } catch (e) {}
+    if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: fname }).catch(function () { blobDownload_(blob, fname); });
+      return;
+    }
+    blobDownload_(blob, fname);
+  }
+  function blobDownload_(blob, fname) {
     var a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.href = URL.createObjectURL(blob);
     a.download = fname;
     document.body.appendChild(a);
     a.click();
@@ -949,7 +962,7 @@
         rows.push(["Расходы по категориям", ""]);
         cats.forEach(function (c) { rows.push([c.cat, Number(c.amount) || 0]); });
         downloadCsv_(rows, "otchet_" + monthKey + ".csv");
-        toast("Отчёт скачан");
+        toast("Файл готов: окно «Поделиться» или загрузки браузера. Внутри Telegram скачивание не работает — откройте ЦУБ в Safari/Chrome");
       });
       document.getElementById("exp-add").addEventListener("click", function () {
         var amount = num(document.getElementById("exp-amount").value);
