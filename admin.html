@@ -622,6 +622,7 @@
       var m = rs[1] && rs[1].metrics ? rs[1].metrics : null;
       var mErr = rs[1] && rs[1].__err;
       var locked = String(state.texts.site_locked || "") === "1";
+      var courierOn = String(state.texts.courier_enabled || "1") !== "0";
 
       main.innerHTML =
         '<div class="screen-title-row"><div class="screen-title">Статус</div>' +
@@ -640,6 +641,14 @@
                 '<input id="lock-message" value="' + esc(state.texts.lock_message || "") + '" placeholder="Магазин временно закрыт" />') +
               '<button class="btn-primary" id="lock-toggle" style="background:var(--ok);border-color:var(--ok);">Открыть магазин</button>'
             : '<button class="btn-primary" id="lock-toggle" style="background:var(--danger);border-color:var(--danger);">Заблокировать магазин</button>') +
+          '<div class="state-row" style="margin-top:12px;">' +
+            '<span class="state-line">Курьерская доставка</span>' +
+            (courierOn
+              ? '<button class="act-btn" id="courier-toggle" style="color:var(--ok);">Включена — выключить</button>' +
+                ''
+              : '<button class="act-btn" id="courier-toggle" style="color:var(--danger);">Выключена — включить</button>') +
+          '</div>' +
+          '<p class="hint-note">Выключишь — у клиентов останется только самовывоз, кнопка «Курьер» погаснет. Обратно — в один клик.</p>' +
         '</div>' +
 
         '<div class="card section-gap">' +
@@ -718,6 +727,16 @@
             .catch(function (e) { toast(errMsg(e)); });
         });
       }
+
+      var courierToggle = document.getElementById("courier-toggle");
+      courierToggle.addEventListener("click", function () {
+        var newVal = courierOn ? "0" : "1";
+        courierToggle.disabled = true;
+        apiPost("setText", { key: "courier_enabled", value: newVal })
+          .then(assertOk)
+          .then(function () { toast(newVal === "1" ? "Курьерская доставка включена" : "Курьерская доставка выключена"); renderTab(); })
+          .catch(function (e) { toast(errMsg(e)); courierToggle.disabled = false; });
+      });
 
       var qrToggle = document.getElementById("qr-toggle");
       qrToggle.addEventListener("click", function () {
