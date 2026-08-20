@@ -502,8 +502,11 @@
   var tg = (typeof window.Telegram !== "undefined" && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
   if (tg) { try { tg.ready(); tg.expand(); } catch (e) {} }
 
+  // Демо-режим для портфолио: ?demo=1 — витрина с тестовыми данными, без сервера
+  var DEMO = /[?&]demo=1/.test(location.search);
+
   var state = {
-    role: localStorage.getItem("ppm_role") || null,
+    role: DEMO ? "client" : (localStorage.getItem("ppm_role") || null),
     telegramId: localStorage.getItem("ppm_tgid") || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? String(tg.initDataUnsafe.user.id) : ""),
     name: localStorage.getItem("ppm_name") || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.first_name : ""),
     tab: null,
@@ -524,6 +527,10 @@
 
   // ---------------- API layer ----------------
   function apiPost(action, payload) {
+    if (DEMO) {
+      if (action === "createOrder") return Promise.resolve({ success: true, orderId: "DEMO-" + Math.floor(1000 + Math.random() * 9000) });
+      return Promise.reject(new Error("demo"));
+    }
     var body = payload || {};
     body.s = "9f84d4915e7ff316c335e30370bfc2eb";
     // Подпись Telegram: по ней сервер проверяет, кто мы, и открывает разделы роли.
@@ -569,7 +576,7 @@
   }
   function demoSotrudniki() {
     return [
-      { id: 1, name: "Егор", role: "owner", telegramId: "224091557", active: true },
+      { id: 1, name: "Егор", role: "owner", telegramId: "000000000", active: true },
       { id: 2, name: "Иван", role: "kladovshchik", telegramId: "100200300", active: true }
     ];
   }
@@ -583,7 +590,7 @@
       el.innerHTML = '<span class="dot"></span>Подключено к API';
     } else {
       el.className = "status-banner warn";
-      el.innerHTML = '<span class="dot"></span>Демо-данные — нет связи с backend';
+      el.innerHTML = '<span class="dot"></span>' + (DEMO ? 'Демо-режим: тестовые данные' : 'Демо-данные — нет связи с backend');
     }
   }
 
@@ -713,7 +720,7 @@
 
   // ---------------- helpers ----------------
   function money(n) {
-    return (Number(n) || 0).toLocaleString("ru-RU") + " ₫";
+    return (Number(n) || 0).toLocaleString("ru-RU") + (DEMO ? " ₸" : " ₫");
   }
   function fmtDate(iso) {
     try {
